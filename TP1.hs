@@ -13,10 +13,14 @@ type Distance = Int
 type RoadMap = [(City,City,Distance)]
 
 cities :: RoadMap -> [City]
-cities = undefined -- modifiy this line to implement the solution, for each exercise not solved, leave the function definition like this
+cities roadMap = uniqueCities
+    where
+        allCities = concat [[city1, city2] | (city1, city2, _) <- roadMap]  -- extract all cities from the roadmap and concat to a list
+        uniqueCities = Data.List.nub allCities                              -- remove duplicates from the list
 
 areAdjacent :: RoadMap -> City -> City -> Bool
-areAdjacent = undefined
+areAdjacent roadMap city1 city2 = any (\(c1, c2, _) -> (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1)) roadMap
+-- check if there's any tuple (c1, c2, _) in the roadmap that confirms those 2 equalities
 
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance = undefined
