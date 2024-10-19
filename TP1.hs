@@ -49,8 +49,24 @@ rome roadMap = [city | (city, degree) <- cityDegrees, degree == maxDegree]
         -- find the maximum degree from 'cityDegrees' by mapping 'snd' (second element of the tuple) and applying 'maximum'.
         maxDegree = maximum (map snd cityDegrees)
 
+-- auxiliar function to perform depth-first search
+dfs :: RoadMap -> City -> [City] -> [City]
+dfs roadMap originCity visitedCities
+    | originCity `elem` visitedCities = visitedCities                   -- base case: if the originCity is already in the visitedCities list, return the visitedCities list.
+    | otherwise = foldl auxVisit (originCity : visitedCities) roadMap   -- otherwise, add the originCity to the visitedCities list and visit connected cities.
+    where
+        -- auxiliar function to visit connected cities.
+        auxVisit acc (c1, c2, _)
+            | c1 == originCity = dfs roadMap c2 acc     -- if c1 is the originCity, recursively call dfs with c2.
+            | c2 == originCity = dfs roadMap c1 acc     -- if c2 is the originCity, recursively call dfs with c1.
+            | otherwise = acc                           -- if neither c1 nor c2 is the originCity, return the accumulator.
+
 isStronglyConnected :: RoadMap -> Bool
-isStronglyConnected = undefined
+-- check if the length of the list of cities visited by 'dfs' starting from each city is equal to the length of 'uniqueCities'.
+isStronglyConnected roadMap = all (\city -> length (dfs roadMap city []) == length uniqueCities) uniqueCities
+    where
+        -- extract all unique cities from the RoadMap using the 'cities' function.
+        uniqueCities = cities roadMap
 
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath = undefined
