@@ -16,8 +16,8 @@ type RoadMap = [(City,City,Distance)]
 cities :: RoadMap -> [City]
 cities roadMap = uniqueCities
     where
-        allCities = concat [[city1, city2] | (city1, city2, _) <- roadMap]  -- extract all cities from the RoadMap and concat to a list
-        uniqueCities = Data.List.nub allCities                              -- remove duplicates from the list
+        allCities = concat [[city1, city2] | (city1, city2, _) <- roadMap]  -- extract all cities from the RoadMap and concat to a list.
+        uniqueCities = Data.List.nub allCities                              -- remove duplicates from the list.
 
 areAdjacent :: RoadMap -> City -> City -> Bool
 -- check if there's any tuple (c1, c2, _) in the RoadMap that confirms the cities are adjacent.
@@ -30,7 +30,11 @@ distance ((c1, c2, dist):rest) city1 city2
     | otherwise = distance rest city1 city2                     -- otherwise, recursively check the rest of the RoadMap.
 
 adjacent :: RoadMap -> City -> [(City,Distance)]
-adjacent = undefined
+adjacent [] _ = []                                              -- base case: if the RoadMap is empty, return an empty list.
+adjacent ((c1, c2, dist):rest) originCity
+    | originCity == c1 = (c2, dist) : adjacent rest originCity  -- if the originCity matches c1, add (c2, dist) to the result.
+    | originCity == c2 = (c1, dist) : adjacent rest originCity  -- if the originCity matches c2, add (c1, dist) to the result.
+    | otherwise = adjacent rest originCity                      -- otherwise, recursively check the rest of the RoadMap.
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance = undefined
