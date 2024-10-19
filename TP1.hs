@@ -1,7 +1,6 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
-import Data.Char (GeneralCategory(NotAssigned))
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -40,7 +39,15 @@ pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance = undefined
 
 rome :: RoadMap -> [City]
-rome = undefined
+-- construct a list of cities by iterating over 'cityDegrees', which is a list of tuples (city, degree), and applying the equality degree == maxDegree
+rome roadMap = [city | (city, degree) <- cityDegrees, degree == maxDegree]
+    where
+        -- extract all unique cities from the RoadMap using the 'cities' function.
+        uniqueCities = cities roadMap   
+        -- create a list of tuples (city, degree) where 'degree' is the number of roads connected to 'city'.
+        cityDegrees = [(city, length (filter (\(c1, c2, _) -> c1 == city || c2 == city) roadMap)) | city <- uniqueCities]
+        -- find the maximum degree from 'cityDegrees' by mapping 'snd' (second element of the tuple) and applying 'maximum'.
+        maxDegree = maximum (map snd cityDegrees)
 
 isStronglyConnected :: RoadMap -> Bool
 isStronglyConnected = undefined
