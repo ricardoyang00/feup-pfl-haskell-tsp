@@ -1,6 +1,7 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import Data.Char (GeneralCategory(NotAssigned))
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -15,15 +16,18 @@ type RoadMap = [(City,City,Distance)]
 cities :: RoadMap -> [City]
 cities roadMap = uniqueCities
     where
-        allCities = concat [[city1, city2] | (city1, city2, _) <- roadMap]  -- extract all cities from the roadmap and concat to a list
+        allCities = concat [[city1, city2] | (city1, city2, _) <- roadMap]  -- extract all cities from the RoadMap and concat to a list
         uniqueCities = Data.List.nub allCities                              -- remove duplicates from the list
 
 areAdjacent :: RoadMap -> City -> City -> Bool
+-- check if there's any tuple (c1, c2, _) in the RoadMap that confirms the cities are adjacent.
 areAdjacent roadMap city1 city2 = any (\(c1, c2, _) -> (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1)) roadMap
--- check if there's any tuple (c1, c2, _) in the roadmap that confirms those 2 equalities
 
 distance :: RoadMap -> City -> City -> Maybe Distance
-distance = undefined
+distance [] _ _ = Nothing                                       -- base case: if the RoadMap is empty, return Nothing.
+distance ((c1, c2, dist):rest) city1 city2
+    | areAdjacent [(c1, c2, dist)] city1 city2 = Just dist      -- if the cities are adjacent, return the distance.
+    | otherwise = distance rest city1 city2                     -- otherwise, recursively check the rest of the RoadMap.
 
 adjacent :: RoadMap -> City -> [(City,Distance)]
 adjacent = undefined
