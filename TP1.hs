@@ -12,22 +12,37 @@ type Distance = Int
 
 type RoadMap = [(City,City,Distance)]
 
+-- Returns all unique cities in the RoadMap.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
 cities :: RoadMap -> [City]
 cities roadMap = uniqueCities
     where
         allCities = concat [[city1, city2] | (city1, city2, _) <- roadMap]  -- extract all cities from the RoadMap and concat to a list.
         uniqueCities = Data.List.nub allCities                              -- remove duplicates from the list.
 
+-- Checks if two cities are directly connected.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- city1, city2: the names of the cities to check for adjacency.
 areAdjacent :: RoadMap -> City -> City -> Bool
 -- check if there's any tuple (c1, c2, _) in the RoadMap that confirms the cities are adjacent.
 areAdjacent roadMap city1 city2 = any (\(c1, c2, _) -> (c1 == city1 && c2 == city2) || (c1 == city2 && c2 == city1)) roadMap
 
+-- Returns the distance between two cities if they are directly connected, or Nothing if they are not.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- city1, city2: the names of the cities between which to calculate the distance.
 distance :: RoadMap -> City -> City -> Maybe Distance
 distance [] _ _ = Nothing                                       -- base case: if the RoadMap is empty, return Nothing.
 distance ((c1, c2, dist):rest) city1 city2
     | areAdjacent [(c1, c2, dist)] city1 city2 = Just dist      -- if the cities are adjacent, return the distance.
     | otherwise = distance rest city1 city2                     -- otherwise, recursively check the rest of the RoadMap.
 
+-- Returns a list of cities that are directly connected to the given city, along with their respective distances.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- originCity: the city for which to find adjacent cities.
 adjacent :: RoadMap -> City -> [(City,Distance)]
 adjacent [] _ = []                                              -- base case: if the RoadMap is empty, return an empty list.
 adjacent ((c1, c2, dist):rest) originCity
@@ -35,6 +50,10 @@ adjacent ((c1, c2, dist):rest) originCity
     | originCity == c2 = (c1, dist) : adjacent rest originCity  -- if the originCity matches c2, add (c1, dist) to the result.
     | otherwise = adjacent rest originCity                      -- otherwise, recursively check the rest of the RoadMap.
 
+-- Calculates the total distance for a given path of cities. Returns Nothing if any cities in the path are not connected.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- path: a list of cities representing the path.
 pathDistance :: RoadMap -> Path -> Maybe Distance
 pathDistance _ [] = Nothing         -- base case: if the path is empty, return Nothing.
 pathDistance _ [_] = Just 0         -- base case: if the path has only one city, return Just 0.
@@ -50,6 +69,9 @@ pathDistance roadMap (city1:city2:rest) =
             -- if the rest of the path is valid, sum the distance of the current path with the rest of the path.
             Just restDist -> Just (dist + restDist)
 
+-- Finds the cities with the highest degree (most directly connected roads) in the RoadMap.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
 rome :: RoadMap -> [City]
 -- construct a list of cities by iterating over 'cityDegrees', which is a list of tuples (city, degree), and applying the equality degree == maxDegree
 rome roadMap = [city | (city, degree) <- cityDegrees, degree == maxDegree]
@@ -61,7 +83,11 @@ rome roadMap = [city | (city, degree) <- cityDegrees, degree == maxDegree]
         -- find the maximum degree from 'cityDegrees' by mapping 'snd' (second element of the tuple) and applying 'maximum'.
         maxDegree = maximum (map snd cityDegrees)
 
--- auxiliar function to perform depth-first search
+-- Auxiliar function that performs a depth-first search starting from a given city, returning a list of visited cities.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- originCity: the starting city for the search.
+-- visitedCities: a list of cities that have already been visited.
 dfs :: RoadMap -> City -> [City] -> [City]
 dfs roadMap originCity visitedCities
     | originCity `elem` visitedCities = visitedCities                   -- base case: if the originCity is already in the visitedCities list, return the visitedCities list.
@@ -73,6 +99,9 @@ dfs roadMap originCity visitedCities
             | c2 == originCity = dfs roadMap c1 acc     -- if c2 is the originCity, recursively call dfs with c1.
             | otherwise = acc                           -- if neither c1 nor c2 is the originCity, return the accumulator.
 
+-- Checks if all cities in the RoadMap are strongly connected, meaning every city is reachable from every other city.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
 isStronglyConnected :: RoadMap -> Bool
 -- check if the length of the list of cities visited by 'dfs' starting from each city is equal to the length of 'uniqueCities'.
 isStronglyConnected roadMap = all (\city -> length (dfs roadMap city []) == length uniqueCities) uniqueCities
