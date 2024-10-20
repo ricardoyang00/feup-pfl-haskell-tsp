@@ -36,7 +36,19 @@ adjacent ((c1, c2, dist):rest) originCity
     | otherwise = adjacent rest originCity                      -- otherwise, recursively check the rest of the RoadMap.
 
 pathDistance :: RoadMap -> Path -> Maybe Distance
-pathDistance = undefined
+pathDistance _ [] = Nothing         -- base case: if the path is empty, return Nothing.
+pathDistance _ [_] = Just 0         -- base case: if the path has only one city, return Just 0.
+pathDistance roadMap (city1:city2:rest) =
+    -- check if city1 and city2 have a path in between using the 'distance' function
+    case distance roadMap city1 city2 of
+        -- if they are not directly connected, return Nothing.
+        Nothing -> Nothing  
+        -- if they are directly connected, get the distance.
+        Just dist -> case pathDistance roadMap (city2:rest) of     -- recursively calculate the distance for the rest of the path.
+            -- if the rest of the path is not valid, return Nothing.
+            Nothing -> Nothing
+            -- if the rest of the path is valid, sum the distance of the current path with the rest of the path.
+            Just restDist -> Just (dist + restDist)
 
 rome :: RoadMap -> [City]
 -- construct a list of cities by iterating over 'cityDegrees', which is a list of tuples (city, degree), and applying the equality degree == maxDegree
