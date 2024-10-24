@@ -109,8 +109,38 @@ isStronglyConnected roadMap = all (\city -> length (dfs roadMap city []) == leng
         -- extract all unique cities from the RoadMap using the 'cities' function.
         uniqueCities = cities roadMap
 
+-- ==================================================================
+
+-- Type alias for an adjacency list representation of a graph.
+type AdjList = [(City, [(City, Distance)])]
+
+-- Converts a RoadMap to an adjacency list representation.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+roadMapToAdjList :: RoadMap -> AdjList
+roadMapToAdjList [] = [] -- if the RoadMap is empty, return an empty list.
+roadMapToAdjList ((c1, c2, dist):rest) = 
+    let adjList = roadMapToAdjList rest                 -- recursively process the rest of the roadmap.
+    in addEdge c1 c2 dist (addEdge c2 c1 dist adjList)  -- add both directions of the road to the adjacency list.
+
+-- Adds an edge between two cities to the adjacency list
+-- If city1 is already in the list, it adds city2 as a neighbor with the distance
+-- Otherwise, it creates a new entry for city1
+-- Arguments:
+-- city1: the city we are adding or updating in the adjacency list.
+-- city2: the neighbor city connected to city1.
+-- dist: the distance between city1 and city2.
+-- ((city, neighbors):rest): the current adjacency list, where the head is a tuple (city, neighbors) representing a city and its list of neighbors, and rest is the rest of the adjacency list.
+addEdge :: City -> City -> Distance -> AdjList -> AdjList
+addEdge city1 city2 dist [] = [(city1, [(city2, dist)])]  -- if the list is empty, create the first entry.
+addEdge city1 city2 dist ((city, neighbors):rest)
+    | city == city1 = (city, (city2, dist) : neighbors) : rest         -- if city1 is already in the list, add city2 to its neighbors.
+    | otherwise = (city, neighbors) : addEdge city1 city2 dist rest    -- otherwise, keep looking in the rest of the list.
+
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath = undefined
+
+-- ==================================================================
 
 travelSales :: RoadMap -> Path
 travelSales = undefined
