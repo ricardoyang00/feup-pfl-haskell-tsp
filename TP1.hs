@@ -137,8 +137,29 @@ addEdge city1 city2 dist ((city, neighbors):rest)
     | city == city1 = (city, (city2, dist) : neighbors) : rest         -- if city1 is already in the list, add city2 to its neighbors.
     | otherwise = (city, neighbors) : addEdge city1 city2 dist rest    -- otherwise, keep looking in the rest of the list.
 
+isCityInRoadMap :: City -> RoadMap -> Bool
+isCityInRoadMap city roadMap = any (\(c1, c2, _) -> c1 == city || c2 == city) roadMap
+
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath = undefined
+shortestPath roadMap start goal
+    | null roadMap || null start || null goal = []
+    | not (isCityInRoadMap start roadMap) || not (isCityInRoadMap goal roadMap) = []
+    | otherwise =
+        let adjList = roadMapToAdjList roadMap
+            bfs queue visited
+                | null queue = []
+                | currentCity == goal = [reverse (currentCity : path)]
+                | currentCity `elem` visited = bfs rest visited
+                | otherwise = bfs (Data.List.sortOn (\(_, _, d) -> d) (rest ++ newPaths)) (currentCity : visited)
+                where
+                    (currentCity, path, currentDist) = head queue
+                    rest = tail queue
+                    neighbors = case lookup currentCity adjList of
+                        Just ns -> ns
+                        Nothing -> []
+                    newPaths = [(nextCity, currentCity : path, currentDist + dist) | (nextCity, dist) <- neighbors, not (nextCity `elem` visited)]
+            initialQueue = [(start, [], 0)]
+        in bfs initialQueue []
 -- ==================================================================
 
 travelSales :: RoadMap -> Path
