@@ -137,29 +137,71 @@ addEdge city1 city2 dist ((city, neighbors):rest)
     | city == city1 = (city, (city2, dist) : neighbors) : rest         -- if city1 is already in the list, add city2 to its neighbors.
     | otherwise = (city, neighbors) : addEdge city1 city2 dist rest    -- otherwise, keep looking in the rest of the list.
 
+-- Checks if a city is present in the road map.
+-- Arguments:
+-- city: the city to search for in the road map.
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
 isCityInRoadMap :: City -> RoadMap -> Bool
 isCityInRoadMap city roadMap = any (\(c1, c2, _) -> c1 == city || c2 == city) roadMap
 
+-- Finds all shortest paths between two cities in the road map.
+-- The function first checks if the road map and the specified cities are valid. 
+-- If they are valid, it initializes a breadth-first search (BFS) to explore all paths from the start city to the goal city, collecting paths that match the shortest distance.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- start: the city from which to start the path search.
+-- goal: the city at which to end the path search.
+-- Returns: a list of paths (each path is a list of cities) from the start city to the goal city.
 shortestPath :: RoadMap -> City -> City -> [Path]
 shortestPath roadMap start goal
+    -- if the road map, start city, or goal city is empty, return an empty list.
     | null roadMap || null start || null goal = []
+    -- if the start or goal city is not in the road map, return an empty list.
     | not (isCityInRoadMap start roadMap) || not (isCityInRoadMap goal roadMap) = []
-    | otherwise =
-        let adjList = roadMapToAdjList roadMap
-            bfs queue visited
-                | null queue = []
-                | currentCity == goal = [reverse (currentCity : path)]
-                | currentCity `elem` visited = bfs rest visited
-                | otherwise = bfs (Data.List.sortOn (\(_, _, d) -> d) (rest ++ newPaths)) (currentCity : visited)
-                where
-                    (currentCity, path, currentDist) = head queue
-                    rest = tail queue
-                    neighbors = case lookup currentCity adjList of
-                        Just ns -> ns
-                        Nothing -> []
-                    newPaths = [(nextCity, currentCity : path, currentDist + dist) | (nextCity, dist) <- neighbors, not (nextCity `elem` visited)]
+    -- otherwise, proceed with the BFS algorithm to find all shortest paths.
+    | otherwise = bfs initialQueue [] maxBound []
+        where
+            -- convert the road map to an adjacency list.
+            adjList = roadMapToAdjList roadMap
+            -- initialize the BFS queue with the start city, an empty path, and a distance of 0.
             initialQueue = [(start, [], 0)]
-        in bfs initialQueue []
+
+            -- Breadth-First Search to find all shortest paths from the start city to the goal city.
+            -- Processes a queue of cities with their corresponding paths and distances, exploring routes while tracking the minimum distance and associated paths.
+            -- Arguments:
+            -- queue: list of tuples containing the current city, path, and distance.
+            -- visited: list of already visited cities to prevent cycles.
+            -- minDist: minimum distance found to the goal city.
+            -- paths: accumulated list of shortest paths to the goal city.
+            -- Returns: list of paths from the start city to the goal city.
+            bfs :: [(City, [City], Distance)] -> [City] -> Distance -> [Path] -> [Path]
+            -- if the queue is empty, return the collected paths.
+            bfs [] _ _ paths = paths
+            -- deconstruct the first element of the queue into currentCity, path, and currentDist.
+            bfs ((currentCity, path, currentDist):rest) visited minDist paths
+                -- if the current city is the goal city:
+                | currentCity == goal =
+                    let newPaths = if currentDist < minDist
+                                    -- if the current distance is less than the minimum distance found so far, start a new list of paths with the current path.
+                                    then [reverse (currentCity : path)]
+                                    -- if the current distance is equal to the minimum distance, add the current path to the list of paths.
+                                    else if currentDist == minDist
+                                        then reverse (currentCity : path) : paths
+                                        -- otherwise, keep the existing paths.
+                                        else paths
+                    -- continue BFS with the rest of the queue, updating the minimum distance and paths.
+                    in bfs rest visited (min minDist currentDist) newPaths
+                -- if the current city is not the goal city:
+                | otherwise =
+                    -- get the neighbors of the current city from the adjacency list.
+                    let neighbors = case lookup currentCity adjList of
+                            Just ns -> ns
+                            Nothing -> []
+                        -- create new paths by adding each neighbor to the current path, and updating the distance.
+                        newPaths = [(nextCity, currentCity : path, currentDist + dist) | (nextCity, dist) <- neighbors, not (nextCity `elem` visited)]
+                    -- continue BFS with the rest of the queue and the new paths, sorting the queue by distance to prioritize shorter paths.
+                    in bfs (Data.List.sortOn (\(_, _, d) -> d) (rest ++ newPaths)) (currentCity : visited) minDist paths
+
 -- ==================================================================
 
 travelSales :: RoadMap -> Path
