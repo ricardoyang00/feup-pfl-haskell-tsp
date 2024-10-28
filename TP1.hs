@@ -149,41 +149,39 @@ addEdge city1 city2 dist ((city, neighbors):rest)
 -- currentPath : remainingPaths: a list of paths that are still being explored, starting with the current path.
 -- Returns: A list of paths, where each path is the shortest route from start to goal.
 dijkstra :: AdjList -> City -> City -> Data.Map.Map City Distance -> [Path] -> [Path] -> [Path]
-dijkstra adjList start goal distances foundPaths [] = foundPaths -- if the list of remaining paths is empty return accumulated list of found paths.
+dijkstra adjList start goal distances foundPaths [] = foundPaths
 dijkstra adjList start goal distances foundPaths (currentPath : remainingPaths)
-    -- if the goal is reached, add the current path to foundPaths and continue exploring.
-    | currentCity == goal = dijkstra adjList start goal distances (currentPath : foundPaths) remainingPaths
-    -- if the goal is not reached, calculate new distances and paths, and sort paths to prioritize shorter ones.
-    | otherwise = dijkstra adjList start goal newDistances foundPaths (Data.List.sortOn (pathTotalDistance distances) (remainingPaths ++ newPaths))
+    | currentCity == goal =
+        let currentDist = pathTotalDistance currentPath adjList
+            minDist = case Data.Maybe.listToMaybe foundPaths of
+                        Nothing -> currentDist
+                        Just fp -> pathTotalDistance fp adjList
+        in if currentDist < minDist
+            then dijkstra adjList start goal distances [currentPath] remainingPaths
+            else if currentDist == minDist
+                then dijkstra adjList start goal distances (currentPath : foundPaths) remainingPaths
+                else dijkstra adjList start goal distances foundPaths remainingPaths
+    | otherwise = dijkstra adjList start goal newDistances foundPaths (Data.List.sortOn (\p -> pathTotalDistance p adjList) (remainingPaths ++ newPaths))
     where
-        -- get the last city in the current path and retrieve its distance.
         currentCity = last currentPath
         currentDistance = Data.Maybe.fromMaybe maxBound (Data.Map.lookup currentCity distances)
-        
-        -- retrieve neighboring cities and distances from the adjacency list.
         neighbors = Data.Maybe.fromMaybe [] (lookup currentCity adjList)
-
-        -- update distances and generate new paths by extending the current path to each neighbor.
         (newDistances, newPaths) = Data.List.foldl' updatePaths (distances, []) neighbors
-
-        -- Helper function that updates distances and paths for each neighbor.
-        -- Arguments:
-        -- dists: the map of distances to be updated.
-        -- paths: the list of new paths.
-        -- (neighbor, weight): the current neighbor and the distance to it from the current city.
+    
         updatePaths (dists, paths) (neighbor, weight) =
             let newDistance = currentDistance + weight
                 oldDistance = Data.Maybe.fromMaybe maxBound (Data.Map.lookup neighbor dists)
             in if newDistance < oldDistance
-                -- if a shorter distance is found, update the distance and add the new path.
                 then (Data.Map.insert neighbor newDistance dists, (currentPath ++ [neighbor]) : paths)
-                -- if the distance is the same as the known shortest, add the path without updating the distance.
                 else if newDistance == oldDistance
                     then (dists, (currentPath ++ [neighbor]) : paths)
                     else (dists, paths)
-
-        -- calculate the total distance of a path using the distances map.
-        pathTotalDistance dists path = sum [Data.Maybe.fromMaybe 0 (Data.Map.lookup (path !! i) dists) - Data.Maybe.fromMaybe 0 (Data.Map.lookup (path !! (i - 1)) dists) | i <- [1..length path - 1]]
+    
+        pathTotalDistance :: Path -> AdjList -> Distance
+        pathTotalDistance path adjList = sum [Data.Maybe.fromMaybe 0 (lookupDistance (path !! (i - 1)) (path !! i) adjList) | i <- [1..length path - 1]]
+    
+        lookupDistance :: City -> City -> AdjList -> Maybe Distance
+        lookupDistance c1 c2 adjList = lookup c2 =<< lookup c1 adjList
 
 -- Function to find the shortest path between two cities in a RoadMap.
 -- Arguments:
