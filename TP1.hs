@@ -1,6 +1,8 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import qualified Data.Map
+import qualified Data.Maybe
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -137,8 +139,68 @@ addEdge city1 city2 dist ((city, neighbors):rest)
     | city == city1 = (city, (city2, dist) : neighbors) : rest         -- if city1 is already in the list, add city2 to its neighbors.
     | otherwise = (city, neighbors) : addEdge city1 city2 dist rest    -- otherwise, keep looking in the rest of the list.
 
+-- Uses a Dijkstra's algorithm to find all shortest paths from start to goal.
+-- Arguments:
+-- adjList: the adjacency list representing the graph.
+-- start: the starting city.
+-- goal: the destination city.
+-- distances: a map that holds the shortest known distance from the start city to each city.
+-- foundPaths: a list of completed paths from start to goal.
+-- currentPath : remainingPaths: a list of paths that are still being explored, starting with the current path.
+-- Returns: A list of paths, where each path is the shortest route from start to goal.
+dijkstra :: AdjList -> City -> City -> Data.Map.Map City Distance -> [Path] -> [Path] -> [Path]
+dijkstra adjList start goal distances foundPaths [] = foundPaths -- if the list of remaining paths is empty return accumulated list of found paths.
+dijkstra adjList start goal distances foundPaths (currentPath : remainingPaths)
+    -- if the goal is reached, add the current path to foundPaths and continue exploring.
+    | currentCity == goal = dijkstra adjList start goal distances (currentPath : foundPaths) remainingPaths
+    -- if the goal is not reached, calculate new distances and paths, and sort paths to prioritize shorter ones.
+    | otherwise = dijkstra adjList start goal newDistances foundPaths (Data.List.sortOn (pathTotalDistance distances) (remainingPaths ++ newPaths))
+    where
+        -- get the last city in the current path and retrieve its distance.
+        currentCity = last currentPath
+        currentDistance = Data.Maybe.fromMaybe maxBound (Data.Map.lookup currentCity distances)
+        
+        -- retrieve neighboring cities and distances from the adjacency list.
+        neighbors = Data.Maybe.fromMaybe [] (lookup currentCity adjList)
+
+        -- update distances and generate new paths by extending the current path to each neighbor.
+        (newDistances, newPaths) = Data.List.foldl' updatePaths (distances, []) neighbors
+
+        -- Helper function that updates distances and paths for each neighbor.
+        -- Arguments:
+        -- dists: the map of distances to be updated.
+        -- paths: the list of new paths.
+        -- (neighbor, weight): the current neighbor and the distance to it from the current city.
+        updatePaths (dists, paths) (neighbor, weight) =
+            let newDistance = currentDistance + weight
+                oldDistance = Data.Maybe.fromMaybe maxBound (Data.Map.lookup neighbor dists)
+            in if newDistance < oldDistance
+                -- if a shorter distance is found, update the distance and add the new path.
+                then (Data.Map.insert neighbor newDistance dists, (currentPath ++ [neighbor]) : paths)
+                -- if the distance is the same as the known shortest, add the path without updating the distance.
+                else if newDistance == oldDistance
+                    then (dists, (currentPath ++ [neighbor]) : paths)
+                    else (dists, paths)
+
+        -- calculate the total distance of a path using the distances map.
+        pathTotalDistance dists path = sum [Data.Maybe.fromMaybe 0 (Data.Map.lookup (path !! i) dists) - Data.Maybe.fromMaybe 0 (Data.Map.lookup (path !! (i - 1)) dists) | i <- [1..length path - 1]]
+
+-- Function to find the shortest path between two cities in a RoadMap.
+-- Arguments:
+-- roadMap: a list of tuples, where each tuple contains two cities and the distance between them.
+-- start: the starting city.
+-- goal: the destination city.
+-- Returns: A list of paths, where each path is the shortest route from start to goal.
 shortestPath :: RoadMap -> City -> City -> [Path]
-shortestPath = undefined
+shortestPath roadMap start goal
+    | null adjList = [] -- if the adjacency list is empty, return an empty list.
+    | not (start `elem` map fst adjList) = [] -- if the starting city is not in the adjacency list, return an empty list.
+    | otherwise = dijkstra adjList start goal initialDistances [] [[start]] -- start Dijkstra's with the start city.
+    where
+        -- convert the RoadMap to an adjacency list.
+        adjList = roadMapToAdjList roadMap
+        -- initialize the distances map with the start city at 0 distance, and all other cities at maxBound representing infinity.
+        initialDistances = Data.Map.insert start 0 (Data.Map.fromList [(city, maxBound) | (city, _, _) <- roadMap])
 
 -- ==================================================================
 
@@ -157,3 +219,10 @@ gTest2 = [("0","1",10),("0","2",15),("0","3",20),("1","2",35),("1","3",25),("2",
 
 gTest3 :: RoadMap -- unconnected graph
 gTest3 = [("0","1",4),("2","3",2)]
+
+-- More graphs to test
+gTest4 :: RoadMap
+gTest4 = [("0","1",2),("0","2",3),("1","3",4),("2","3",3),("1","2",1)]
+
+gTest5 :: RoadMap
+gTest5 = [("0","1",6),("0","3",1),("1","2",5),("1","3",2),("1","4",2),("2","4",5),("3","4",1)]
