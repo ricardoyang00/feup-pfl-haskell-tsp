@@ -63,7 +63,7 @@ We collaborated on the first seven questions, exchanging ideas, and then Bruno t
 
     Then the function transforms the **roadMap** into an **adjList**
 
-    The BFS-based approach processes each city layer by layer to guarantee the shortest paths (in terms of distance) are identified first. Each queue entry includes the **<ins>current city</ins>**, the **<ins>accumulated path</ins>**, and the **<ins>current total distance</ins>**. This iterative process builds up the path from start to goal as follows:
+    The BFS-based approach processes each city layer by layer to guarantee the shortest paths (in terms of distance) are identified first. Each queue entry (as we couldn't import any other data types than the given ones we used a list to represent the bfs queue) includes the **<ins>current city</ins>**, the **<ins>accumulated path</ins>**, and the **<ins>current total distance</ins>**. This iterative process builds up the path from start to goal as follows:
 
     - **Step 1:** Start from the start city, initializing the queue and visiting cities in layers.
 
