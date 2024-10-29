@@ -65,6 +65,34 @@ We collaborated on the first seven questions, exchanging ideas, and then Bruno t
 
     The BFS-based approach processes each city layer by layer to guarantee the shortest paths (in terms of distance) are identified first. Each queue entry (as we couldn't import any other data types than the given ones we used a list to represent the bfs queue) includes the **<ins>current city</ins>**, the **<ins>accumulated path</ins>**, and the **<ins>current total distance</ins>**. This iterative process builds up the path from start to goal as follows:
 
+    ```bash
+    shortestPath :: RoadMap -> City -> City -> [Path]
+    shortestPath roadMap start goal
+        | null roadMap || null start || null goal = []
+        | not (isCityInRoadMap start roadMap) || not (isCityInRoadMap goal roadMap) = []
+        | otherwise = bfs initialQueue [] maxBound []
+        where
+            adjList = roadMapToAdjList roadMap
+            initialQueue = [(start, [], 0)]
+            
+            bfs :: [(City, [City], Distance)] -> [City] -> Distance -> [Path] -> [Path]
+            bfs [] _ _ paths = paths
+            bfs ((currentCity, path, currentDist):rest) visited minDist paths
+                | currentCity == goal =
+                    let newPaths = if currentDist < minDist
+                                    then [reverse (currentCity : path)]
+                                    else if currentDist == minDist
+                                        then reverse (currentCity : path) : paths
+                                        else paths
+                    in bfs rest visited (min minDist currentDist) newPaths
+                | otherwise =
+                    let neighbors = case lookup currentCity adjList of
+                            Just ns -> ns
+                            Nothing -> []
+                        newPaths = [(nextCity, currentCity : path, currentDist + dist) | (nextCity, dist) <- neighbors, not (nextCity `elem` visited)]
+                    in bfs (Data.List.sortOn (\(_, _, d) -> d) (rest ++ newPaths)) (currentCity : visited) minDist paths
+    ```
+    
     - **Step 1:** Start from the start city, initializing the queue and visiting cities in layers.
 
     - **Step 2:** When reaching the goal city, compare the current path's distance to the shortest path found so far. If it’s shorter, update the shortest path; if equal, add it as an alternative shortest path.
