@@ -1,6 +1,7 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import Data.Array 
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -204,8 +205,48 @@ shortestPath roadMap start goal
 
 -- ==================================================================
 
+type CityIndex = Int
+type AdjMatrix = Array (CityIndex, CityIndex) (Maybe Distance)
+
+-- Function to associate each city with a unique index
+-- e.g. [("A", 0), ("B", 1), ("C", 2), ...]
+uniqueCitiesWithIndices :: RoadMap -> ([(City, CityIndex)], Int)
+uniqueCitiesWithIndices roadMap =
+    let uniqueCities = cities roadMap
+        cityIndexPairs = zip uniqueCities [0..]  -- Create pairs of (City, Index)
+    in (cityIndexPairs, length uniqueCities) 
+
+-- Convert a city to its index
+cityToIndex :: [(City, CityIndex)] -> City -> CityIndex
+cityToIndex cityIndices city = 
+    case lookup city cityIndices of
+        Just index -> index
+        Nothing -> error $ "City not found: " ++ city
+
+-- Convert an index back to a city
+indexToCity :: [(City, CityIndex)] -> CityIndex -> City
+indexToCity cityIndices index = 
+    case lookup index (map swap cityIndices) of
+        Just city -> city
+        Nothing -> error $ "Index not found: " ++ show index
+    where swap (x, y) = (y, x)
+
+-- Convert RoadMap to AdjMatrix
+-- type AdjMatrix = Array (CityIndex, CityIndex) (Maybe Distance)
+roadMapToAdjMatrix :: RoadMap -> AdjMatrix
+roadMapToAdjMatrix roadMap =
+    let (cityIndices, numCities) = uniqueCitiesWithIndices roadMap
+        bounds = ((0, 0), (numCities - 1, numCities - 1))
+        entries = [((cityToIndex cityIndices c1, cityToIndex cityIndices c2), distance roadMap c1 c2) |
+                   c1 <- map fst cityIndices, c2 <- map fst cityIndices]
+    in Data.Array.array bounds $ map (\((i, j), d) -> ((i, j), d)) entries ++ 
+                                  map (\((j, i), d) -> ((j, i), d)) entries
+
+
+-- TSP function using dynamic programming
 travelSales :: RoadMap -> Path
 travelSales = undefined
+-- ==================================================================
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
