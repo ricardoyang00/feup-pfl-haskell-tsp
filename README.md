@@ -74,5 +74,7 @@ We collaborated on the first seven questions, exchanging ideas, and then Bruno t
     - **Cycle Avoidance:** Tracks visited cities to avoid reprocessing cities, keeping each path unique and acyclic.
 
     **Time Complexity:** O(V + ElogE)
-    
+
     **Space Complexity:** O(V + E)
+
+## Travel Sales Function
