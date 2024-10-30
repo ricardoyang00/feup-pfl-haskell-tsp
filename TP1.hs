@@ -1,7 +1,6 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
-import Data.Array 
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -206,7 +205,7 @@ shortestPath roadMap start goal
 -- ==================================================================
 
 type CityIndex = Int
-type AdjMatrix = Array (CityIndex, CityIndex) (Maybe Distance)
+type AdjMatrix = Data.Array.Array (CityIndex, CityIndex) (Maybe Distance)
 
 -- Function to associate each city with a unique index
 -- e.g. [("A", 0), ("B", 1), ("C", 2), ...]
@@ -237,15 +236,43 @@ roadMapToAdjMatrix :: RoadMap -> AdjMatrix
 roadMapToAdjMatrix roadMap =
     let (cityIndices, numCities) = uniqueCitiesWithIndices roadMap
         bounds = ((0, 0), (numCities - 1, numCities - 1))
-        entries = [((cityToIndex cityIndices c1, cityToIndex cityIndices c2), distance roadMap c1 c2) |
+        entries = [((cityToIndex cityIndices c1, cityToIndex cityIndices c2),
+                    if c1 == c2 then Just 0
+                    else distance roadMap c1 c2) |
                    c1 <- map fst cityIndices, c2 <- map fst cityIndices]
     in Data.Array.array bounds $ map (\((i, j), d) -> ((i, j), d)) entries ++ 
                                   map (\((j, i), d) -> ((j, i), d)) entries
 
+-- Debuf function to print the adjacency matrix
+printAdjMatrix :: RoadMap -> IO ()
+printAdjMatrix roadMap = do
+    let adjMatrix = roadMapToAdjMatrix roadMap
+        (cityIndices, numCities) = uniqueCitiesWithIndices roadMap
+        cities = map fst cityIndices
+    putStrLn "Adjacency Matrix:"
+    putStrLn $ "   " ++ unwords (map show [0..numCities-1])
+    mapM_ (\i -> do
+        putStr $ show i ++ "  "
+        mapM_ (\j -> 
+                let distanceValue = adjMatrix Data.Array.! (i, j)
+                in case distanceValue of
+                    Just d  -> putStr $ show d ++ " "   -- Print distance if available
+                    Nothing -> putStr $ "N "           -- Print "∞" if there's no connection
+            ) [0..numCities-1]
+        putStrLn ""
+        ) [0..numCities-1]
 
--- TSP function using dynamic programming
+inf = maxBound :: Int  -- A large number to represent 'infinity'
+
+fromMaybe :: a -> Maybe a -> a
+fromMaybe defaultVal Nothing = defaultVal
+fromMaybe _ (Just x) = x
+
+-- Function to solve TSP using dynamic programming
+-- Function to solve TSP using dynamic programming
 travelSales :: RoadMap -> Path
-travelSales = undefined
+travelSales roadMap = undefined
+
 -- ==================================================================
 
 tspBruteForce :: RoadMap -> Path
