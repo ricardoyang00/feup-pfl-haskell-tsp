@@ -262,6 +262,8 @@ printAdjMatrix roadMap = do
         putStrLn ""
         ) [0..numCities-1]
 
+inf :: Int
+inf = maxBound
 
 -- Solve the Traveling Salesman Problem (TSP) using dynamic programming
 travelSales :: RoadMap -> Path
@@ -298,7 +300,7 @@ travelSales roadMap =
             | visited == (1 `Data.Bits.shiftL` n) - 1 =
                 case distArray Data.Array.! (currentCity, 0) of  -- Distance from currentCity back to start (city 0)
                     Just d  -> (d, dpMemo)  -- If a return path exists, return its distance
-                    Nothing -> (maxBound :: Int, dpMemo)  -- If no return path, assign maximum bound as cost
+                    Nothing -> (inf, dpMemo)  -- If no return path, assign maximum bound as cost
             -- Recursive case: Visit the next unvisited city
             | otherwise =
                 case dpMemo Data.Array.! (currentCity, visited) of
@@ -307,7 +309,7 @@ travelSales roadMap =
                         -- Explore all possible next cities and find the one with minimal total cost
                         let
                             -- Fold over all possible next city indices to find the minimal cost
-                            (minCost, dpUpdated) = foldl nextCity (maxBound :: Int, dpMemo) [0..n-1]
+                            (minCost, dpUpdated) = foldl nextCity (inf, dpMemo) [0..n-1]
                             
                             -- Helper function to evaluate each possible next city
                             nextCity (currentMin, dpAcc) nextCityIdx
@@ -360,7 +362,7 @@ travelSales roadMap =
         -- Execute the TSP function starting from city 0 with the initial visited set
         (minCost, dpFinal) = tsp 0 initialVisited dp
     in
-        if minCost == (maxBound :: Int) 
+        if minCost == (inf)  
             then []
             else
                 -- Reconstruct and return the optimal path if a solution exists
