@@ -1,6 +1,7 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import Debug.Trace (trace)
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -263,7 +264,7 @@ printAdjMatrix roadMap = do
         ) [0..numCities-1]
 
 inf :: Int
-inf = maxBound
+inf = 10^9
 
 -- Solve the Traveling Salesman Problem (TSP) using dynamic programming
 travelSales :: RoadMap -> Path
@@ -362,12 +363,13 @@ travelSales roadMap =
         -- Execute the TSP function starting from city 0 with the initial visited set
         (minCost, dpFinal) = tsp 0 initialVisited dp
     in
-        if minCost == (inf)  
+        -- trace ("minCost: " ++ show minCost) $
+        if minCost >= (inf)
             then []
-            else
-                -- Reconstruct and return the optimal path if a solution exists
-                let path = reconstructPath 0 initialVisited dpFinal
-                in path
+        else
+            -- Reconstruct and return the optimal path if a solution exists
+            let path = reconstructPath 0 initialVisited dpFinal
+            in path
 
 -- ==================================================================
 
