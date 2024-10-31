@@ -1,6 +1,7 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
+import Debug.Trace (trace)
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -204,8 +205,173 @@ shortestPath roadMap start goal
 
 -- ==================================================================
 
+type CityIndex = Int
+type AdjMatrix = Data.Array.Array (CityIndex, CityIndex) (Maybe Distance)
+
+-- Function to associate each city with a unique index
+-- e.g. [("A", 0), ("B", 1), ("C", 2), ...]
+uniqueCitiesWithIndices :: RoadMap -> ([(City, CityIndex)], Int)
+uniqueCitiesWithIndices roadMap =
+    let uniqueCities = cities roadMap
+        cityIndexPairs = zip uniqueCities [0..]  -- Create pairs of (City, Index)
+    in (cityIndexPairs, length uniqueCities) 
+
+-- Convert a city to its index
+cityToIndex :: [(City, CityIndex)] -> City -> CityIndex
+cityToIndex cityIndices city = 
+    case lookup city cityIndices of
+        Just index -> index
+        Nothing -> error $ "City not found: " ++ city
+
+-- Convert an index back to a city
+indexToCity :: [(City, CityIndex)] -> CityIndex -> City
+indexToCity cityIndices index = 
+    case lookup index (map swap cityIndices) of
+        Just city -> city
+        Nothing -> error $ "Index not found: " ++ show index
+    where swap (x, y) = (y, x)
+
+-- Convert RoadMap to AdjMatrix
+-- type AdjMatrix = Array (CityIndex, CityIndex) (Maybe Distance)
+roadMapToAdjMatrix :: RoadMap -> AdjMatrix
+roadMapToAdjMatrix roadMap =
+    let (cityIndices, numCities) = uniqueCitiesWithIndices roadMap
+        bounds = ((0, 0), (numCities - 1, numCities - 1))
+        entries = [((cityToIndex cityIndices c1, cityToIndex cityIndices c2),
+                    if c1 == c2 then Just 0
+                    else distance roadMap c1 c2) |
+                   c1 <- map fst cityIndices, c2 <- map fst cityIndices]
+    in Data.Array.array bounds $ map (\((i, j), d) -> ((i, j), d)) entries ++ 
+                                  map (\((j, i), d) -> ((j, i), d)) entries
+
+-- Debug function to print the adjacency matrix
+printAdjMatrix :: RoadMap -> IO ()
+printAdjMatrix roadMap = do
+    let adjMatrix = roadMapToAdjMatrix roadMap
+        (cityIndices, numCities) = uniqueCitiesWithIndices roadMap
+        cities = map fst cityIndices
+    putStrLn "Adjacency Matrix:"
+    putStrLn $ "   " ++ unwords (map show [0..numCities-1])
+    mapM_ (\i -> do
+        putStr $ show i ++ "  "
+        mapM_ (\j -> 
+                let distanceValue = adjMatrix Data.Array.! (i, j)
+                in case distanceValue of
+                    Just d  -> putStr $ show d ++ " "   -- Print distance if available
+                    Nothing -> putStr $ "- "           -- Print "N" (∞) if there's no connection
+            ) [0..numCities-1]
+        putStrLn ""
+        ) [0..numCities-1]
+
+inf :: Int
+inf = 10^9
+
+-- Solve the Traveling Salesman Problem (TSP) using dynamic programming
 travelSales :: RoadMap -> Path
-travelSales = undefined
+travelSales roadMap =
+    let
+        -- Map each unique city to a unique index and get the total number of cities (n)
+        (cityIndices, n) = uniqueCitiesWithIndices roadMap
+
+        -- Convert the road map to an adjacency matrix represented as an array
+        distArray = roadMapToAdjMatrix roadMap
+
+        -- Memoization table:
+        -- dp[currentCity][visitedSet] = (cost, nextCity)
+        -- - currentCity: The index of the current city in the tour
+        -- - visitedSet: A bitmask representing the set of cities visited so far
+        -- - cost: The minimal cost to complete the tour from currentCity
+        -- - nextCity: The next city to visit from currentCity
+        -- Initialize the memoization table with Nothing for all states
+        dp :: Data.Array.Array (Int, Int) (Maybe (Distance, Int))
+        dp = Data.Array.listArray 
+                ((0, 0), (n-1, (1 `Data.Bits.shiftL` n) - 1))  -- Bounds: (0,0) to (n-1, 2^n - 1)
+                (repeat Nothing)  -- Initialize all entries to Nothing
+
+        -- Recursive TSP function with memoization
+        -- Parameters:
+        -- - currentCity: The current city's index
+        -- - visited: Bitmask of visited cities
+        -- - dpMemo: Current state of the memoization table
+        -- Returns:
+        -- - (Distance, Updated Memoization Table)
+        tsp :: Int -> Int -> Data.Array.Array (Int, Int) (Maybe (Distance, Int)) -> (Distance, Data.Array.Array (Int, Int) (Maybe (Distance, Int)))
+        tsp currentCity visited dpMemo
+            -- Base case: All cities have been visited
+            | visited == (1 `Data.Bits.shiftL` n) - 1 =
+                case distArray Data.Array.! (currentCity, 0) of  -- Distance from currentCity back to start (city 0)
+                    Just d  -> (d, dpMemo)  -- If a return path exists, return its distance
+                    Nothing -> (inf, dpMemo)  -- If no return path, assign maximum bound as cost
+            -- Recursive case: Visit the next unvisited city
+            | otherwise =
+                case dpMemo Data.Array.! (currentCity, visited) of
+                    Just (cost, _) -> (cost, dpMemo)  -- If the state is already computed, return the stored cost
+                    Nothing ->
+                        -- Explore all possible next cities and find the one with minimal total cost
+                        let
+                            -- Fold over all possible next city indices to find the minimal cost
+                            (minCost, dpUpdated) = foldl nextCity (inf, dpMemo) [0..n-1]
+                            
+                            -- Helper function to evaluate each possible next city
+                            nextCity (currentMin, dpAcc) nextCityIdx
+                                -- Skip if nextCityIdx has already been visited
+                                | visited Data.Bits..&. (1 `Data.Bits.shiftL` nextCityIdx) /= 0 = (currentMin, dpAcc)
+                                | otherwise =
+                                    case distArray Data.Array.! (currentCity, nextCityIdx) of
+                                        Just d ->
+                                            let
+                                                -- Mark the next city as visited
+                                                visited' = visited Data.Bits..|. (1 `Data.Bits.shiftL` nextCityIdx)
+                                                
+                                                -- Recursively compute the cost from nextCityIdx with the updated visited set
+                                                (costNext, dpNext) = tsp nextCityIdx visited' dpAcc
+                                                
+                                                -- Total cost if visiting nextCityIdx
+                                                totalCost = d + costNext
+                                                
+                                                -- Update the minimal cost and memoization table if a better path is found
+                                                (newMin, dpNew) = if totalCost < currentMin
+                                                    then (totalCost, dpNext Data.Array.// [((currentCity, visited), Just (totalCost, nextCityIdx))])
+                                                    else (currentMin, dpNext)
+                                            in (newMin, dpNew)
+                                        Nothing -> (currentMin, dpAcc)  -- If no direct path, skip
+                        in (minCost, dpUpdated)  -- Return the minimal cost and the updated memoization table
+
+        -- Function to reconstruct the optimal path from the memoization table
+        -- Parameters:
+        -- - currentCity: The current city's index
+        -- - visited: Bitmask of visited cities
+        -- - dpMemo: The final state of the memoization table after computation
+        -- Returns:
+        -- - [City]: The list of cities representing the optimal path
+        reconstructPath :: Int -> Int -> Data.Array.Array (Int, Int) (Maybe (Distance, Int)) -> [City]
+        reconstructPath currentCity visited dpMemo
+            -- Base case: All cities have been visited, return to the starting city
+            | visited == (1 `Data.Bits.shiftL` n) - 1 =
+                [indexToCity cityIndices currentCity, indexToCity cityIndices 0]
+            -- Recursive case: Follow the nextCity pointers from the memoization table
+            | otherwise =
+                case dpMemo Data.Array.! (currentCity, visited) of
+                    Just (_, nextCityIdx) ->
+                        -- Prepend the current city to the path and recurse with the next city marked as visited
+                        indexToCity cityIndices currentCity : reconstructPath nextCityIdx (visited Data.Bits..|. (1 `Data.Bits.shiftL` nextCityIdx)) dpMemo
+                    Nothing -> []  -- If no path exists, return an empty list
+
+        -- Initialize the visited set with the starting city (assumed to be city 0)
+        initialVisited = 1 `Data.Bits.shiftL` 0  -- Binary: 000...1
+        
+        -- Execute the TSP function starting from city 0 with the initial visited set
+        (minCost, dpFinal) = tsp 0 initialVisited dp
+    in
+        -- trace ("minCost: " ++ show minCost) $
+        if minCost >= (inf)
+            then []
+        else
+            -- Reconstruct and return the optimal path if a solution exists
+            let path = reconstructPath 0 initialVisited dpFinal
+            in path
+
+-- ==================================================================
 
 tspBruteForce :: RoadMap -> Path
 tspBruteForce = undefined -- only for groups of 3 people; groups of 2 people: do not edit this function
