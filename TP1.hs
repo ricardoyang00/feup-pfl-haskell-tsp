@@ -1,7 +1,6 @@
 import qualified Data.List
 import qualified Data.Array
 import qualified Data.Bits
-import Debug.Trace (trace)
 
 -- PFL 2024/2025 Practical assignment 1
 
@@ -205,25 +204,31 @@ shortestPath roadMap start goal
 
 -- ==================================================================
 
+-- Type alias for an adjacency matrix representation of a graph.
 type CityIndex = Int
 type AdjMatrix = Data.Array.Array (CityIndex, CityIndex) (Maybe Distance)
 
 -- Function to associate each city with a unique index
--- e.g. [("A", 0), ("B", 1), ("C", 2), ...]
+-- e.g. [(City, CityIndex)] = [("A", 0), ("B", 1), ("C", 2), ...]
+-- Receives a RoadMap and returns a list of pairs (City, CityIndex) and the total number of unique cities
 uniqueCitiesWithIndices :: RoadMap -> ([(City, CityIndex)], Int)
 uniqueCitiesWithIndices roadMap =
     let uniqueCities = cities roadMap
-        cityIndexPairs = zip uniqueCities [0..]  -- Create pairs of (City, Index)
+        cityIndexPairs = zip uniqueCities [0..]
     in (cityIndexPairs, length uniqueCities) 
 
--- Convert a city to its index
+-- Function to convert a city to its corresponding index
+-- Receives a list of pairs (City, CityIndex) and a city
+-- Returns the index of the city
 cityToIndex :: [(City, CityIndex)] -> City -> CityIndex
 cityToIndex cityIndices city = 
     case lookup city cityIndices of
         Just index -> index
         Nothing -> error $ "City not found: " ++ city
 
--- Convert an index back to a city
+-- Function to convert an index to its corresponding city
+-- Receives a list of pairs (City, CityIndex) and an index
+-- Returns the city corresponding to the index
 indexToCity :: [(City, CityIndex)] -> CityIndex -> City
 indexToCity cityIndices index = 
     case lookup index (map swap cityIndices) of
@@ -231,8 +236,9 @@ indexToCity cityIndices index =
         Nothing -> error $ "Index not found: " ++ show index
     where swap (x, y) = (y, x)
 
--- Convert RoadMap to AdjMatrix
--- type AdjMatrix = Array (CityIndex, CityIndex) (Maybe Distance)
+-- Function to convert a RoadMap to an adjacency matrix
+-- Receives a RoadMap and returns an adjacency matrix represented as an array
+-- Note: As all graphs are undirected, the adjacency matrix is symmetric
 roadMapToAdjMatrix :: RoadMap -> AdjMatrix
 roadMapToAdjMatrix roadMap =
     let (cityIndices, numCities) = uniqueCitiesWithIndices roadMap
@@ -253,20 +259,24 @@ printAdjMatrix roadMap = do
     putStrLn "Adjacency Matrix:"
     putStrLn $ "   " ++ unwords (map show [0..numCities-1])
     mapM_ (\i -> do
-        putStr $ show i ++ "  "
-        mapM_ (\j -> 
-                let distanceValue = adjMatrix Data.Array.! (i, j)
-                in case distanceValue of
-                    Just d  -> putStr $ show d ++ " "   -- Print distance if available
-                    Nothing -> putStr $ "- "           -- Print "N" (∞) if there's no connection
-            ) [0..numCities-1]
-        putStrLn ""
+            putStr $ show i ++ "  "
+            mapM_ (\j -> 
+                    let distanceValue = adjMatrix Data.Array.! (i, j)
+                    in case distanceValue of
+                        Just d  -> putStr $ show d ++ " "   -- Print distance if available
+                        Nothing -> putStr $ "- "            -- Print "-" (∞) if there's no connection
+                ) [0..numCities-1]
+            putStrLn ""
         ) [0..numCities-1]
 
+-- Macro to represent infinity (a large value)
 inf :: Int
 inf = 10^9
 
--- Solve the Traveling Salesman Problem (TSP) using dynamic programming
+-- Function to solve the Traveling Salesman Problem (TSP) using dynamic programming
+-- Receives a RoadMap and returns the optimal path to visit all cities exactly once and return to the starting city
+-- Note: Returns an empty list if no solution exists, including when graph is unconnected
+-- Time complexity: O(n^2 * 2^n), where n is the number of cities
 travelSales :: RoadMap -> Path
 travelSales roadMap =
     let
@@ -274,7 +284,7 @@ travelSales roadMap =
         (cityIndices, n) = uniqueCitiesWithIndices roadMap
 
         -- Convert the road map to an adjacency matrix represented as an array
-        distArray = roadMapToAdjMatrix roadMap
+        m = roadMapToAdjMatrix roadMap
 
         -- Memoization table:
         -- dp[currentCity][visitedSet] = (cost, nextCity)
@@ -299,7 +309,7 @@ travelSales roadMap =
         tsp currentCity visited dpMemo
             -- Base case: All cities have been visited
             | visited == (1 `Data.Bits.shiftL` n) - 1 =
-                case distArray Data.Array.! (currentCity, 0) of  -- Distance from currentCity back to start (city 0)
+                case m Data.Array.! (currentCity, 0) of  -- Distance from currentCity back to start (city 0)
                     Just d  -> (d, dpMemo)  -- If a return path exists, return its distance
                     Nothing -> (inf, dpMemo)  -- If no return path, assign maximum bound as cost
             -- Recursive case: Visit the next unvisited city
@@ -317,7 +327,7 @@ travelSales roadMap =
                                 -- Skip if nextCityIdx has already been visited
                                 | visited Data.Bits..&. (1 `Data.Bits.shiftL` nextCityIdx) /= 0 = (currentMin, dpAcc)
                                 | otherwise =
-                                    case distArray Data.Array.! (currentCity, nextCityIdx) of
+                                    case m Data.Array.! (currentCity, nextCityIdx) of
                                         Just d ->
                                             let
                                                 -- Mark the next city as visited
@@ -363,9 +373,7 @@ travelSales roadMap =
         -- Execute the TSP function starting from city 0 with the initial visited set
         (minCost, dpFinal) = tsp 0 initialVisited dp
     in
-        -- trace ("minCost: " ++ show minCost) $
-        if minCost >= (inf)
-            then []
+        if minCost >= (inf) then []
         else
             -- Reconstruct and return the optimal path if a solution exists
             let path = reconstructPath 0 initialVisited dpFinal
