@@ -1,14 +1,9 @@
-# PFL - Haskell Coursework
-The goals of this project are to define and use appropriate data types for a
-graph representing a country, composed of a set of interconnected cities.
+# Graph Problems in Haskell
+This project aims to solve various graph problems in Haskell, including the Traveling Salesman Problem (TSP), by using data types for representing a country as a graph composed of interconnected cities.
 
-## Brief description of the tasks each one performed
-
-We collaborated on the first seven questions, exchanging ideas, and then Bruno tackled the shortest path problem while Ricardo worked on the traveling salesman problem.
-
-### T06_G05
-- Bruno Huang (up202207517) - 50%
-- Ricardo Yang (up202208465) - 50%
+## Contents
+- [Shortest Path](#shortest-path-function)
+- [Travel Sales](#travel-sales-function)
 
 ## Shortest Path Function
 
@@ -370,3 +365,6 @@ We collaborated on the first seven questions, exchanging ideas, and then Bruno t
 
     `*` where O(n 2<sup>n</sup>) are maximum number of unique subproblems/states and O(n) for transition (through for loop as in code) in every states.
 
+
+## Acknowledgement
+This project was developed for the [Functional and Logic Programming (PFL)](https://sigarra.up.pt/feup/en/ucurr_geral.ficha_uc_view?pv_ocorrencia_id=541889) unit course at FEUP during the 2024/2025 academic year.
